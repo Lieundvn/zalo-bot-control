@@ -1,59 +1,120 @@
-<div class="card">
-    <h2>🛤️ VẼ LỘ TRÌNH UỐN LƯỢN (HÀNH LANG 5KM)</h2>
-    <p style="font-size: 12px; color: #666;">Bấm lên bản đồ để thêm điểm rẽ. Kéo điểm để chỉnh đường.</p>
-    <div id="map" style="height: 450px; border-radius: 10px; border: 2px solid #1a73e8;"></div>
-    <div style="display: flex; gap: 10px; margin-top: 10px;">
-        <button class="btn-main" onclick="savePath()">LƯU LỘ TRÌNH</button>
-        <button class="btn-main" style="background:#666" onclick="resetPath()">XÓA VẼ LẠI</button>
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Điều Khiển Bot Xe Ghép Liêu Hải</title>
+    
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+    <style>
+        body { font-family: -apple-system, sans-serif; background: #f0f2f5; padding: 15px; margin: 0; }
+        .card { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); margin-bottom: 15px; }
+        h2 { margin-top: 0; color: #1a73e8; font-size: 18px; border-left: 4px solid #1a73e8; padding-left: 10px; }
+        /* Map phải có chiều cao cố định mới hiện được */
+        #map { height: 450px; width: 100%; border-radius: 10px; border: 2px solid #1a73e8; margin-bottom: 10px; }
+        .btn-group { display: flex; gap: 10px; }
+        button { flex: 1; padding: 15px; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; color: white; }
+        .btn-blue { background: #1a73e8; }
+        .btn-grey { background: #666; }
+        .status { font-size: 13px; text-align: center; color: #666; margin-top: 10px; font-weight: bold; }
+    </style>
+</head>
+<body>
+
+    <div class="card">
+        <h2>🛤️ VẼ LỘ TRÌNH UỐN LƯỢN (HÀNH LANG 5KM)</h2>
+        <p style="font-size: 13px; color: #555;"><b>Hướng dẫn:</b> Bấm lên bản đồ để thêm điểm rẽ. Kéo các điểm để chỉnh đường uốn lượn.</p>
+        
+        <div id="map"></div>
+        
+        <div class="btn-group">
+            <button class="btn-blue" onclick="savePath()">LƯU LỘ TRÌNH</button>
+            <button class="btn-grey" onclick="resetPath()">XÓA VẼ LẠI</button>
+        </div>
+        <div id="status-msg" class="status">Đang tải bản đồ Liêu Hải...</div>
     </div>
-</div>
 
-<script>
-    let map, polyline, markers = [];
+    <script>
+        // THÔNG TIN KẾT NỐI CỦA ANH LÂM
+        const SUPABASE_URL = 'https://rcndrqiebvdynqrmkamm.supabase.co';
+        const SUPABASE_KEY = 'sb_publishable_FTmHIei2ao0danjQfkuo5Q_qcHSKXZA';
+        const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-    function initMap() {
-        map = L.map('map').setView([21.028, 105.852], 10);
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+        let map, polyline, buffer, markers = [];
 
-        polyline = L.polyline([], {color: '#1a73e8', weight: 6, opacity: 0.7}).addTo(map);
-        // Dải hành lang xanh mờ 5km
-        buffer = L.polyline([], {color: '#1a73e8', weight: 50, opacity: 0.15}).addTo(map);
+        // Khởi tạo bản đồ
+        function initMap() {
+            // Đặt tâm ở Hà Nội cho anh dễ vẽ
+            map = L.map('map').setView([21.0285, 105.8542], 10);
+            
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '© OpenStreetMap'
+            }).addTo(map);
 
-        map.on('click', function(e) {
-            addPoint(e.latlng);
-        });
-    }
+            polyline = L.polyline([], {color: '#1a73e8', weight: 6, opacity: 0.8}).addTo(map);
+            buffer = L.polyline([], {color: '#1a73e8', weight: 50, opacity: 0.2}).addTo(map);
 
-    function addPoint(latlng) {
-        let marker = L.marker(latlng, {draggable: true}).addTo(map);
-        marker.on('drag', updatePolyline);
-        marker.on('contextmenu', function() { // Chuột phải hoặc giữ lâu để xóa điểm
-            map.removeLayer(marker);
-            markers = markers.filter(m => m !== marker);
-            updatePolyline();
-        });
-        markers.push(marker);
-        updatePolyline();
-    }
+            // Bấm vào bản đồ để thêm điểm
+            map.on('click', function(e) {
+                addPoint(e.latlng);
+            });
+            
+            document.getElementById('status-msg').innerText = "Bản đồ đã sẵn sàng! Anh Lâm vẽ đi.";
+        }
 
-    function updatePolyline() {
-        let coords = markers.map(m => m.getLatLng());
-        polyline.setLatLngs(coords);
-        buffer.setLatLngs(coords);
-    }
+        function addPoint(latlng) {
+            let marker = L.marker(latlng, {draggable: true}).addTo(map);
+            marker.on('drag', updatePath);
+            // Chuột phải vào điểm để xóa điểm đó
+            marker.on('contextmenu', function() {
+                map.removeLayer(marker);
+                markers = markers.filter(m => m !== marker);
+                updatePath();
+            });
+            markers.push(marker);
+            updatePath();
+        }
 
-    function resetPath() {
-        markers.forEach(m => map.removeLayer(m));
-        markers = [];
-        updatePolyline();
-    }
+        function updatePath() {
+            let coords = markers.map(m => m.getLatLng());
+            polyline.setLatLngs(coords);
+            buffer.setLatLngs(coords);
+        }
 
-    async function savePath() {
-        const coords = markers.map(m => ({lat: m.getLatLng().lat, lng: m.getLatLng().lng}));
-        const { error } = await supabaseClient.from('bot_config').update({
-            path_data: coords
-        }).eq('id', 1);
-        if (!error) alert("Đã lưu lộ trình uốn lượn thành công!");
-    }
-    initMap();
-</script>
+        function resetPath() {
+            if(!confirm("Anh muốn xóa toàn bộ đường đã vẽ?")) return;
+            markers.forEach(m => map.removeLayer(m));
+            markers = [];
+            updatePath();
+        }
+
+        async function savePath() {
+            if (markers.length < 2) {
+                alert("Anh Lâm vẽ ít nhất 2 điểm mới thành lộ trình được nhé!");
+                return;
+            }
+            const status = document.getElementById('status-msg');
+            status.innerText = "Đang lưu lộ trình lên hệ thống...";
+            
+            const coords = markers.map(m => ({lat: m.getLatLng().lat, lng: m.getLatLng().lng}));
+            
+            const { error } = await supabaseClient.from('bot_config').update({
+                path_data: coords
+            }).eq('id', 1);
+
+            if (!error) {
+                alert("Đã lưu lộ trình thành công! Bot Liêu Hải bắt đầu quét hành lang 5km.");
+                status.innerText = "Lộ trình đã được lưu lúc: " + new Date().toLocaleTimeString();
+            } else {
+                alert("Lỗi: " + error.message);
+            }
+        }
+
+        // Tự động chạy khi mở trang
+        window.onload = initMap;
+    </script>
+</body>
+</html>
