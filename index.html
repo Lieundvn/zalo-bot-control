@@ -11,26 +11,41 @@
         body { font-family: -apple-system, sans-serif; background: #f0f2f5; padding: 10px; margin: 0; }
         .card { background: white; padding: 15px; border-radius: 12px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); margin-bottom: 10px; }
         h2 { margin-top: 0; color: #1a73e8; font-size: 16px; border-left: 4px solid #1a73e8; padding-left: 10px; }
-        #map { height: 400px; width: 100%; border-radius: 10px; border: 2px solid #1a73e8; }
-        .btn-main { background: #1a73e8; color: white; border: none; padding: 12px; width: 100%; border-radius: 8px; font-size: 15px; font-weight: bold; cursor: pointer; }
+        #map { height: 380px; width: 100%; border-radius: 10px; border: 2px solid #1a73e8; }
+        .btn-main { background: #1a73e8; color: white; border: none; padding: 14px; width: 100%; border-radius: 8px; font-size: 15px; font-weight: bold; cursor: pointer; }
+        .btn-red { background: #d93025 !important; padding: 16px; font-size: 16px; }
+        .btn-grey { background: #666 !important; }
+        .btn-group { display: flex; gap: 10px; margin-top: 10px; }
         .time-group { display: flex; gap: 10px; margin: 15px 0; }
         .time-box { flex: 1; }
         .time-box span { display: block; font-size: 12px; color: #666; margin-bottom: 5px; }
         input[type="time"] { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 8px; font-size: 14px; box-sizing: border-box; }
-        .direction-label { display: block; font-size: 13px; font-weight: bold; color: #d93025; margin-bottom: 5px; }
-        .status { font-size: 12px; text-align: center; color: #666; margin-top: 10px; }
+        .status { font-size: 12px; text-align: center; color: #666; margin-top: 10px; font-weight: bold; }
+        .hint { font-size: 12px; color: #666; margin-top: 5px; display: block; }
     </style>
 </head>
 <body>
 
+    <!-- NÚT LỆNH KHẨN CẤP ĐƯỢC ĐƯA LÊN ĐẦU TRANG -->
+    <div class="card" style="border: 1px solid #f5c6cb; background: #f8d7da;">
+        <h2>🔥 LỆNH HÀNH TRÌNH CHUYẾN MỚI</h2>
+        <button class="btn-main btn-red" onclick="clearJourney()">🔥 XÓA HÀNH TRÌNH (BẮT ĐẦU LẠI)</button>
+        <span class="hint" style="color: #721c24;">* Bấm nút này khi chạy xong 1 lượt để Bot xóa bộ nhớ "sau lưng", sẵn sàng vồ lại giờ cũ cho chuyến sau.</span>
+    </div>
+
     <div class="card">
         <h2>🗺️ KHOANH VÙNG LỘ TRÌNH (HÀNH LANG 5KM)</h2>
         <div id="map"></div>
-        <p style="font-size: 12px; color: #d93025; font-weight: bold;">* Bot sẽ tự động bỏ qua các lịch đi ngược với hướng mũi tên lộ trình anh vẽ.</p>
+        <span class="hint" style="color: #d93025; font-weight: bold;">* Bấm lên bản đồ để tạo đường đi. Chuột phải vào điểm để xóa điểm đó.</span>
         
+        <div class="btn-group">
+            <button class="btn-main" onclick="saveAllConfig()">LƯU LỘ TRÌNH & GIỜ ĐÓN</button>
+            <button class="btn-main btn-grey" onclick="resetPath()">XÓA VẼ LẠI ĐƯỜNG</button>
+        </div>
+
         <div class="time-group">
             <div class="time-box">
-                <span>Giờ bắt đầu nhận:</span>
+                <span>Giờ bắt đầu quét:</span>
                 <input type="time" id="start-time">
             </div>
             <div class="time-box">
@@ -38,8 +53,7 @@
                 <input type="time" id="end-time">
             </div>
         </div>
-
-        <button class="btn-main" onclick="saveAllConfig()">LƯU LỘ TRÌNH & GIỜ ĐÓN</button>
+        
         <div id="status-msg" class="status">Đang tải cấu hình Liêu Hải...</div>
     </div>
 
@@ -78,6 +92,13 @@
             buffer.setLatLngs(coords);
         }
 
+        function resetPath() {
+            if(!confirm("Anh Lâm muốn xóa hết các điểm đang vẽ trên bản đồ?")) return;
+            markers.forEach(m => map.removeLayer(m));
+            markers = [];
+            updatePath();
+        }
+
         async function loadCurrentConfig() {
             const { data: config } = await supabaseClient.from('bot_config').select('*').eq('id', 1).single();
             if (config) {
@@ -88,7 +109,7 @@
                     config.path_data.forEach(p => addPoint(L.latLng(p.lat, p.lng)));
                 }
             }
-            document.getElementById('status-msg').innerText = "Đã tải cấu hình mới nhất!";
+            document.getElementById('status-msg').innerText = "Hệ thống Liêu Hải đã sẵn sàng!";
         }
 
         async function saveAllConfig() {
@@ -97,9 +118,9 @@
             const endTime = document.getElementById('end-time').value;
             const coords = markers.map(m => ({lat: m.getLatLng().lat, lng: m.getLatLng().lng}));
 
-            if (coords.length < 2) { alert("Anh hãy vẽ lộ trình trước!"); return; }
+            if (coords.length < 2) { alert("Anh Lâm vẽ lộ trình ít nhất 2 điểm nhé!"); return; }
 
-            status.innerText = "Đang lưu hệ thống...";
+            status.innerText = "Đang lưu cấu hình...";
             const { error } = await supabaseClient.from('bot_config').update({
                 path_data: coords,
                 start_time: startTime + ":00",
@@ -107,8 +128,30 @@
                 is_active: true
             }).eq('id', 1);
 
-            if (!error) alert("Đã lưu lộ trình & giờ đón thành công!");
-            else alert("Lỗi: " + error.message);
+            if (!error) {
+                alert("Đã lưu lộ trình & giờ đón thành công!");
+                status.innerText = "Cập nhật lúc: " + new Date().toLocaleTimeString();
+            } else {
+                alert("Lỗi: " + error.message);
+            }
+        }
+
+        // HÀM LỆNH XÓA ĐỂ BẮT ĐẦU CHUYẾN MỚI
+        async function clearJourney() {
+            if (!confirm("Anh Lâm chắc chắn muốn xóa hết lịch cũ để bắt đầu chuyến mới chứ?")) return;
+            const status = document.getElementById('status-msg');
+            status.innerText = "Đang phát lệnh xóa hành trình...";
+            
+            const { error } = await supabaseClient.from('bot_config').update({ 
+                last_clear_at: new Date().toISOString() 
+            }).eq('id', 1);
+
+            if (!error) {
+                alert("Đã làm mới hành trình thành công! Bot ở nhà sẽ dọn sạch bộ nhớ.");
+                status.innerText = "Hành trình đã được xóa và làm mới!";
+            } else {
+                alert("Lỗi khi xóa: " + error.message);
+            }
         }
 
         window.onload = initMap;
