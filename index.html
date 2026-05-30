@@ -3,73 +3,67 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Điều Khiển Bot Xe Ghép Liêu Hải</title>
-    
+    <title>Điều Khiển Bot Liêu Hải - Lộ Trình</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-
     <style>
-        body { font-family: -apple-system, sans-serif; background: #f0f2f5; padding: 15px; margin: 0; }
-        .card { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); margin-bottom: 15px; }
-        h2 { margin-top: 0; color: #1a73e8; font-size: 18px; border-left: 4px solid #1a73e8; padding-left: 10px; }
-        /* Map phải có chiều cao cố định mới hiện được */
-        #map { height: 450px; width: 100%; border-radius: 10px; border: 2px solid #1a73e8; margin-bottom: 10px; }
-        .btn-group { display: flex; gap: 10px; }
-        button { flex: 1; padding: 15px; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; color: white; }
-        .btn-blue { background: #1a73e8; }
-        .btn-grey { background: #666; }
-        .status { font-size: 13px; text-align: center; color: #666; margin-top: 10px; font-weight: bold; }
+        body { font-family: -apple-system, sans-serif; background: #f0f2f5; padding: 10px; margin: 0; }
+        .card { background: white; padding: 15px; border-radius: 12px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); margin-bottom: 10px; }
+        h2 { margin-top: 0; color: #1a73e8; font-size: 16px; border-left: 4px solid #1a73e8; padding-left: 10px; }
+        #map { height: 400px; width: 100%; border-radius: 10px; border: 2px solid #1a73e8; }
+        .btn-main { background: #1a73e8; color: white; border: none; padding: 12px; width: 100%; border-radius: 8px; font-size: 15px; font-weight: bold; cursor: pointer; }
+        .time-group { display: flex; gap: 10px; margin: 15px 0; }
+        .time-box { flex: 1; }
+        .time-box span { display: block; font-size: 12px; color: #666; margin-bottom: 5px; }
+        input[type="time"] { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 8px; font-size: 14px; box-sizing: border-box; }
+        .direction-label { display: block; font-size: 13px; font-weight: bold; color: #d93025; margin-bottom: 5px; }
+        .status { font-size: 12px; text-align: center; color: #666; margin-top: 10px; }
     </style>
 </head>
 <body>
 
     <div class="card">
-        <h2>🛤️ VẼ LỘ TRÌNH UỐN LƯỢN (HÀNH LANG 5KM)</h2>
-        <p style="font-size: 13px; color: #555;"><b>Hướng dẫn:</b> Bấm lên bản đồ để thêm điểm rẽ. Kéo các điểm để chỉnh đường uốn lượn.</p>
-        
+        <h2>🗺️ KHOANH VÙNG LỘ TRÌNH (HÀNH LANG 5KM)</h2>
         <div id="map"></div>
+        <p style="font-size: 12px; color: #d93025; font-weight: bold;">* Bot sẽ tự động bỏ qua các lịch đi ngược với hướng mũi tên lộ trình anh vẽ.</p>
         
-        <div class="btn-group">
-            <button class="btn-blue" onclick="savePath()">LƯU LỘ TRÌNH</button>
-            <button class="btn-grey" onclick="resetPath()">XÓA VẼ LẠI</button>
+        <div class="time-group">
+            <div class="time-box">
+                <span>Giờ bắt đầu nhận:</span>
+                <input type="time" id="start-time">
+            </div>
+            <div class="time-box">
+                <span>Giờ kết thúc:</span>
+                <input type="time" id="end-time">
+            </div>
         </div>
-        <div id="status-msg" class="status">Đang tải bản đồ Liêu Hải...</div>
+
+        <button class="btn-main" onclick="saveAllConfig()">LƯU LỘ TRÌNH & GIỜ ĐÓN</button>
+        <div id="status-msg" class="status">Đang tải cấu hình Liêu Hải...</div>
     </div>
 
     <script>
-        // THÔNG TIN KẾT NỐI CỦA ANH LÂM
         const SUPABASE_URL = 'https://rcndrqiebvdynqrmkamm.supabase.co';
         const SUPABASE_KEY = 'sb_publishable_FTmHIei2ao0danjQfkuo5Q_qcHSKXZA';
         const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
         let map, polyline, buffer, markers = [];
 
-        // Khởi tạo bản đồ
         function initMap() {
-            // Đặt tâm ở Hà Nội cho anh dễ vẽ
-            map = L.map('map').setView([21.0285, 105.8542], 10);
-            
-            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                attribution: '© OpenStreetMap'
-            }).addTo(map);
-
+            map = L.map('map').setView([21.028, 105.852], 10);
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
             polyline = L.polyline([], {color: '#1a73e8', weight: 6, opacity: 0.8}).addTo(map);
             buffer = L.polyline([], {color: '#1a73e8', weight: 50, opacity: 0.2}).addTo(map);
 
-            // Bấm vào bản đồ để thêm điểm
-            map.on('click', function(e) {
-                addPoint(e.latlng);
-            });
-            
-            document.getElementById('status-msg').innerText = "Bản đồ đã sẵn sàng! Anh Lâm vẽ đi.";
+            map.on('click', (e) => addPoint(e.latlng));
+            loadCurrentConfig();
         }
 
         function addPoint(latlng) {
             let marker = L.marker(latlng, {draggable: true}).addTo(map);
             marker.on('drag', updatePath);
-            // Chuột phải vào điểm để xóa điểm đó
-            marker.on('contextmenu', function() {
+            marker.on('contextmenu', () => {
                 map.removeLayer(marker);
                 markers = markers.filter(m => m !== marker);
                 updatePath();
@@ -84,36 +78,39 @@
             buffer.setLatLngs(coords);
         }
 
-        function resetPath() {
-            if(!confirm("Anh muốn xóa toàn bộ đường đã vẽ?")) return;
-            markers.forEach(m => map.removeLayer(m));
-            markers = [];
-            updatePath();
+        async function loadCurrentConfig() {
+            const { data: config } = await supabaseClient.from('bot_config').select('*').eq('id', 1).single();
+            if (config) {
+                document.getElementById('start-time').value = config.start_time?.substring(0, 5) || "00:00";
+                document.getElementById('end-time').value = config.end_time?.substring(0, 5) || "23:59";
+                
+                if (config.path_data) {
+                    config.path_data.forEach(p => addPoint(L.latLng(p.lat, p.lng)));
+                }
+            }
+            document.getElementById('status-msg').innerText = "Đã tải cấu hình mới nhất!";
         }
 
-        async function savePath() {
-            if (markers.length < 2) {
-                alert("Anh Lâm vẽ ít nhất 2 điểm mới thành lộ trình được nhé!");
-                return;
-            }
+        async function saveAllConfig() {
             const status = document.getElementById('status-msg');
-            status.innerText = "Đang lưu lộ trình lên hệ thống...";
-            
+            const startTime = document.getElementById('start-time').value;
+            const endTime = document.getElementById('end-time').value;
             const coords = markers.map(m => ({lat: m.getLatLng().lat, lng: m.getLatLng().lng}));
-            
+
+            if (coords.length < 2) { alert("Anh hãy vẽ lộ trình trước!"); return; }
+
+            status.innerText = "Đang lưu hệ thống...";
             const { error } = await supabaseClient.from('bot_config').update({
-                path_data: coords
+                path_data: coords,
+                start_time: startTime + ":00",
+                end_time: endTime + ":00",
+                is_active: true
             }).eq('id', 1);
 
-            if (!error) {
-                alert("Đã lưu lộ trình thành công! Bot Liêu Hải bắt đầu quét hành lang 5km.");
-                status.innerText = "Lộ trình đã được lưu lúc: " + new Date().toLocaleTimeString();
-            } else {
-                alert("Lỗi: " + error.message);
-            }
+            if (!error) alert("Đã lưu lộ trình & giờ đón thành công!");
+            else alert("Lỗi: " + error.message);
         }
 
-        // Tự động chạy khi mở trang
         window.onload = initMap;
     </script>
 </body>
