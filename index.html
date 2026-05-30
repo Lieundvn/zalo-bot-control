@@ -15,30 +15,39 @@
         .time-box span { display: block; font-size: 13px; color: #666; margin-bottom: 5px; }
         input[type="time"] { padding: 10px; border: 1px solid #ddd; border-radius: 8px; font-size: 16px; width: 100%; box-sizing: border-box; }
         
-        /* Style cho nút chọn hướng đi */
-        .direction-group { display: flex; gap: 10px; margin-bottom: 15px; }
-        .dir-btn { flex: 1; padding: 12px; border: 2px solid #ddd; background: #fff; border-radius: 8px; font-weight: bold; cursor: pointer; text-align: center; font-size: 14px; }
+        .direction-group { display: flex; flex-direction: column; gap: 8px; margin-bottom: 15px; }
+        .dir-btn { padding: 12px; border: 2px solid #ddd; background: #fff; border-radius: 8px; font-weight: bold; cursor: pointer; text-align: center; font-size: 14px; }
         .dir-btn.active { border-color: #1a73e8; background: #e8f0fe; color: #1a73e8; }
 
-        button.btn-main { background: #1a73e8; color: white; border: none; padding: 15px; width: 100%; border-radius: 8px; font-size: 16px; font-weight: bold; cursor: pointer; }
+        button.btn-main { background: #1a73e8; color: white; border: none; padding: 15px; width: 100%; border-radius: 8px; font-size: 16px; font-weight: bold; cursor: pointer; margin-bottom: 10px; }
+        .btn-red { background: #d93025 !important; }
+        .btn-green { background: #1e8e3e !important; }
         button:active { transform: scale(0.98); }
+
         .location-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 10px; margin-top: 15px; }
         .location-item { display: flex; align-items: center; padding: 10px; background: #f8f9fa; border: 1px solid #eee; border-radius: 8px; }
         input[type="checkbox"] { width: 20px; height: 20px; margin-right: 10px; }
-        .status { font-size: 13px; text-align: center; color: #666; margin-top: 15px; padding: 8px; border-radius: 5px; background: #e8f0fe; }
+        .status { font-size: 13px; text-align: center; color: #666; margin-top: 15px; padding: 8px; border-radius: 5px; background: #e8f0fe; font-weight: bold; }
         label { cursor: pointer; font-size: 14px; font-weight: 500; }
+        .hint { font-size: 12px; color: #888; margin-bottom: 10px; display: block; }
     </style>
 </head>
 <body>
 
     <div class="card">
-        <h2>Cấu Hình Bộ Lọc Vồ Chuyến</h2>
+        <h2>Lệnh Hành Trình</h2>
+        <button class="btn-main btn-red" onclick="clearJourney()">🔥 XÓA HÀNH TRÌNH (BẮT ĐẦU MỚI)</button>
+        <span class="hint">* Bấm nút này sau khi chạy xong chuyến để Bot vồ lại giờ cũ.</span>
+    </div>
+
+    <div class="card">
+        <h2>Cấu Hình Bộ Lọc</h2>
         <div class="switch-group">
             <span><b>Trạng thái hoạt động Bot</b></span>
             <input type="checkbox" id="bot-active" style="width: 25px; height: 25px;">
         </div>
 
-        <span style="display: block; font-size: 13px; color: #666; margin-bottom: 5px;">Hướng di chuyển của xe:</span>
+        <span class="hint">Hướng di chuyển của xe:</span>
         <div class="direction-group">
             <div class="dir-btn active" id="dir-ve" onclick="setDirection('VE')">HÀ NỘI → NAM ĐỊNH (ĐÓN VỀ)</div>
             <div class="dir-btn" id="dir-len" onclick="setDirection('LEN')">NAM ĐỊNH → HÀ NỘI (ĐÓN LÊN)</div>
@@ -46,24 +55,33 @@
 
         <div class="time-range">
             <div class="time-box">
-                <span>Từ khung giờ (Start):</span>
+                <span>Từ khung giờ:</span>
                 <input type="time" id="start-time">
             </div>
             <div class="time-box">
-                <span>Đến khung giờ (End):</span>
+                <span>Đến khung giờ:</span>
                 <input type="time" id="end-time">
             </div>
         </div>
         <button class="btn-main" onclick="updateConfig()">LƯU CẤU HÌNH GIAO LỘ</button>
-        <div id="status-msg" class="status">Hệ thống đang kết nối...</div>
+        <div id="status-msg" class="status">Đang kết nối hệ thống Liêu Hải...</div>
     </div>
 
     <div class="card">
-        <h2>30 Quận Huyện Hà Nội (Tích chọn địa bàn nhận)</h2>
-        <div class="location-grid" id="location-list">
-            <p style="text-align: center; color: #999; grid-column: 1/-1;">Đang tải danh sách địa bàn...</p>
+        <h2>Tuyến Phố & Tòa Nhà (Chi tiết)</h2>
+        <span class="hint">Giới hạn không quá 30p lệch cung chính.</span>
+        <div class="location-grid" id="segment-list">
+            <p style="grid-column: 1/-1; color: #999;">Đang tải danh sách phố...</p>
         </div>
-        <button class="btn-main" onclick="updateLocations()" style="background: #34a853; margin-top: 15px;">CẬP NHẬT ĐỊA BÀN NHẬN LỊCH</button>
+        <button class="btn-main btn-green" onclick="updateSegments()" style="margin-top: 15px;">CẬP NHẬT TUYẾN PHỐ ĐÓN</button>
+    </div>
+
+    <div class="card">
+        <h2>Địa Bàn Quận Huyện</h2>
+        <div class="location-grid" id="location-list">
+            <p style="grid-column: 1/-1; color: #999;">Đang tải địa bàn...</p>
+        </div>
+        <button class="btn-main btn-green" onclick="updateLocations()" style="margin-top: 15px;">CẬP NHẬT QUẬN HUYỆN</button>
     </div>
 
     <script>
@@ -82,6 +100,7 @@
         async function loadData() {
             const status = document.getElementById('status-msg');
             try {
+                // 1. Load Bot Config
                 const { data: config } = await supabaseClient.from('bot_config').select('*').eq('id', 1).single();
                 if (config) {
                     document.getElementById('bot-active').checked = config.is_active;
@@ -90,22 +109,53 @@
                     setDirection(config.direction || 'VE');
                 }
 
-                const { data: locations } = await supabaseClient.from('locations_whitelist').select('*').order('id', { ascending: true });
-                if (locations) {
-                    const listDiv = document.getElementById('location-list');
-                    listDiv.innerHTML = '';
-                    locations.forEach(loc => {
-                        listDiv.innerHTML += `
-                            <div class="location-item">
-                                <input type="checkbox" class="loc-cb" id="loc-${loc.id}" data-id="${loc.id}" ${loc.is_enabled ? 'checked' : ''}>
-                                <label for="loc-${loc.id}">${loc.region_name}</label>
+                // 2. Load Quận Huyện
+                const { data: locations } = await supabaseClient.from('locations_whitelist').select('*').order('region_name', { ascending: true });
+                const listDiv = document.getElementById('location-list');
+                listDiv.innerHTML = '';
+                locations.forEach(loc => {
+                    listDiv.innerHTML += `
+                        <div class="location-item">
+                            <input type="checkbox" class="loc-cb" id="loc-${loc.id}" data-id="${loc.id}" ${loc.is_enabled ? 'checked' : ''}>
+                            <label for="loc-${loc.id}">${loc.region_name}</label>
+                        </div>
+                    `;
+                });
+
+                // 3. Load Tuyến Phố/Tòa Nhà (route_segments)
+                const { data: segments } = await supabaseClient.from('route_segments').select('*').order('location_name', { ascending: true });
+                const segDiv = document.getElementById('segment-list');
+                segDiv.innerHTML = '';
+                if (segments && segments.length > 0) {
+                    segments.forEach(seg => {
+                        segDiv.innerHTML += `
+                            <div class="location-item" style="background: #eef7ee;">
+                                <input type="checkbox" class="seg-cb" id="seg-${seg.id}" data-id="${seg.id}" ${seg.is_selected ? 'checked' : ''}>
+                                <label for="seg-${seg.id}">${seg.location_name}</label>
                             </div>
                         `;
                     });
+                } else {
+                    segDiv.innerHTML = '<p style="grid-column: 1/-1; font-size:12px; color:#999;">Chưa có dữ liệu tuyến phố. Anh thêm trong Supabase nhé.</p>';
                 }
-                status.innerText = "Sẵn sàng (Cập nhật lúc: " + new Date().toLocaleTimeString() + ")";
+
+                status.innerText = "Hệ thống sẵn sàng: " + new Date().toLocaleTimeString();
             } catch (e) {
-                status.innerText = "Lỗi kết nối dữ liệu!";
+                status.innerText = "Lỗi kết nối database!";
+            }
+        }
+
+        async function clearJourney() {
+            if (!confirm("Anh Lâm muốn xóa lịch cũ để vồ chuyến mới từ đầu chứ?")) return;
+            const status = document.getElementById('status-msg');
+            status.innerText = "Đang phát lệnh xóa...";
+            const { error } = await supabaseClient.from('bot_config').update({ 
+                last_clear_at: new Date().toISOString() 
+            }).eq('id', 1);
+
+            if (!error) {
+                alert("Đã xóa hành trình! Bot sẽ bắt đầu vồ lại các khung giờ.");
+                status.innerText = "Hành trình đã được làm mới!";
             }
         }
 
@@ -115,11 +165,6 @@
             const startTime = document.getElementById('start-time').value;
             const endTime = document.getElementById('end-time').value;
 
-            if (!startTime || !endTime) {
-                alert("Anh Lâm điền đủ khung giờ nhé!");
-                return;
-            }
-
             status.innerText = "Đang lưu cấu hình...";
             const { error } = await supabaseClient.from('bot_config').update({ 
                 is_active: isActive, 
@@ -128,33 +173,34 @@
                 direction: selectedDirection
             }).eq('id', 1);
 
-            if (!error) {
-                alert("Đã cấu hình bộ lọc chuyến thành công!");
-                status.innerText = "Đã cập nhật cấu hình lúc " + new Date().toLocaleTimeString();
-            } else {
-                alert("Lỗi: " + error.message);
+            if (!error) alert("Đã lưu cấu hình chung!");
+            loadData();
+        }
+
+        async function updateSegments() {
+            const status = document.getElementById('status-msg');
+            const checkboxes = document.querySelectorAll('.seg-cb');
+            status.innerText = "Đang cập nhật tuyến phố...";
+            
+            for (let cb of checkboxes) {
+                const id = cb.getAttribute('data-id');
+                await supabaseClient.from('route_segments').update({ is_selected: cb.checked }).eq('id', id);
             }
+            alert("Đã cập nhật các tuyến phố đón khách!");
+            loadData();
         }
 
         async function updateLocations() {
             const status = document.getElementById('status-msg');
             const checkboxes = document.querySelectorAll('.loc-cb');
-            status.innerText = "Đang lưu địa bàn...";
-            let errorOccurred = false;
-
+            status.innerText = "Đang cập nhật địa bàn...";
+            
             for (let cb of checkboxes) {
-                const rowId = cb.getAttribute('data-id');
-                const isEnabled = cb.checked;
-                const { error } = await supabaseClient.from('locations_whitelist').update({ is_enabled: isEnabled }).eq('id', rowId);
-                if (error) errorOccurred = true;
+                const id = cb.getAttribute('data-id');
+                await supabaseClient.from('locations_whitelist').update({ is_enabled: cb.checked }).eq('id', id);
             }
-
-            if (!errorOccurred) {
-                alert("Đã cập nhật vùng nhận chuyến thành công!");
-                status.innerText = "Vùng đón sẵn sàng lúc " + new Date().toLocaleTimeString();
-            } else {
-                alert("Có lỗi xảy ra!");
-            }
+            alert("Đã cập nhật các quận huyện nhận chuyến!");
+            loadData();
         }
 
         loadData();
