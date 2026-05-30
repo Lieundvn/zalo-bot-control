@@ -1,46 +1,59 @@
 <div class="card">
-    <h2>🗺️ VẼ LỘ TRÌNH CHẠY (HÀNH LANG 5KM)</h2>
-    <div id="map" style="height: 400px; border-radius: 10px;"></div>
-    <button class="btn-main" style="margin-top:10px" onclick="savePath()">LƯU LỘ TRÌNH CHẠY</button>
+    <h2>🛤️ VẼ LỘ TRÌNH UỐN LƯỢN (HÀNH LANG 5KM)</h2>
+    <p style="font-size: 12px; color: #666;">Bấm lên bản đồ để thêm điểm rẽ. Kéo điểm để chỉnh đường.</p>
+    <div id="map" style="height: 450px; border-radius: 10px; border: 2px solid #1a73e8;"></div>
+    <div style="display: flex; gap: 10px; margin-top: 10px;">
+        <button class="btn-main" onclick="savePath()">LƯU LỘ TRÌNH</button>
+        <button class="btn-main" style="background:#666" onclick="resetPath()">XÓA VẼ LẠI</button>
+    </div>
 </div>
 
 <script>
-    let map, polyline, startMarker, endMarker;
-    let pStart = [21.212, 105.803]; // Mặc định Nội Bài
-    let pEnd = [20.950, 105.850];   // Mặc định Pháp Vân
+    let map, polyline, markers = [];
 
     function initMap() {
         map = L.map('map').setView([21.028, 105.852], 10);
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
 
-        // Tạo 2 điểm mút có thể kéo
-        startMarker = L.marker(pStart, {draggable: true, title: "Điểm đầu"}).addTo(map);
-        endMarker = L.marker(pEnd, {draggable: true, title: "Điểm cuối"}).addTo(map);
+        polyline = L.polyline([], {color: '#1a73e8', weight: 6, opacity: 0.7}).addTo(map);
+        // Dải hành lang xanh mờ 5km
+        buffer = L.polyline([], {color: '#1a73e8', weight: 50, opacity: 0.15}).addTo(map);
 
-        // Vẽ đường nối
-        polyline = L.polyline([pStart, pEnd], {color: 'red', weight: 5, opacity: 0.5}).addTo(map);
+        map.on('click', function(e) {
+            addPoint(e.latlng);
+        });
+    }
 
-        // Hiệu ứng hành lang 5km (giả lập bằng nét vẽ đậm)
-        let buffer = L.polyline([pStart, pEnd], {color: 'blue', weight: 40, opacity: 0.1}).addTo(map);
+    function addPoint(latlng) {
+        let marker = L.marker(latlng, {draggable: true}).addTo(map);
+        marker.on('drag', updatePolyline);
+        marker.on('contextmenu', function() { // Chuột phải hoặc giữ lâu để xóa điểm
+            map.removeLayer(marker);
+            markers = markers.filter(m => m !== marker);
+            updatePolyline();
+        });
+        markers.push(marker);
+        updatePolyline();
+    }
 
-        function updatePath() {
-            let latlngs = [startMarker.getLatLng(), endMarker.getLatLng()];
-            polyline.setLatLngs(latlngs);
-            buffer.setLatLngs(latlngs);
-        }
+    function updatePolyline() {
+        let coords = markers.map(m => m.getLatLng());
+        polyline.setLatLngs(coords);
+        buffer.setLatLngs(coords);
+    }
 
-        startMarker.on('drag', updatePath);
-        endMarker.on('drag', updatePath);
+    function resetPath() {
+        markers.forEach(m => map.removeLayer(m));
+        markers = [];
+        updatePolyline();
     }
 
     async function savePath() {
-        const s = startMarker.getLatLng();
-        const e = endMarker.getLatLng();
+        const coords = markers.map(m => ({lat: m.getLatLng().lat, lng: m.getLatLng().lng}));
         const { error } = await supabaseClient.from('bot_config').update({
-            path_start_lat: s.lat, path_start_lng: s.lng,
-            path_end_lat: e.lat, path_end_lng: e.lng
+            path_data: coords
         }).eq('id', 1);
-        if (!error) alert("Đã lưu lộ trình Vành Đai 3!");
+        if (!error) alert("Đã lưu lộ trình uốn lượn thành công!");
     }
     initMap();
 </script>
